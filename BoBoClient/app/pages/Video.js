@@ -14,6 +14,8 @@ import {
 
 import p from '../utils/TransForm';
 import Icon from 'react-native-vector-icons/Ionicons';
+import {get} from '../utils/Request';
+import * as urlType from '../utils/Api';
 
 const {width, height} = Dimensions.get('window');
 
@@ -40,54 +42,12 @@ export default class Video extends Component {
     }
 
 
-    // 获取网络数据
+    //从网络加载数据
     fetchNetData() {
-        this.setState({
-            dataSource: this.state.dataSource.cloneWithRows(
-                [
-                    {
-                        "id": "140000199804197921",
-                        "thumb": "http://dummyimage.com/1280x720/848b16)",
-                        "title": "便连说革断光明或件理产对响",
-                        "videoUrl": "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
-                    }
-                    ,
-                    {
-                        "id": "820000198501311173",
-                        "thumb": "http://dummyimage.com/1280x720/080b14)",
-                        "title": "即号美战议始好前较说场到书内接京油。转科每断心号革并型集严多会保间入。",
-                        "videoUrl": "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
-                    }
-                    ,
-                    {
-                        "id": "330000199608082217",
-                        "thumb": "http://dummyimage.com/1280x720/79bf90)",
-                        "title": "日业定更提别国斗所装研应流化形。第济备具路求眼规确也感同头高史。",
-                        "videoUrl": "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
-                    }
-                    ,
-                    {
-                        "id": "310000201512066593",
-                        "thumb": "http://dummyimage.com/1280x720/bb80e6)",
-                        "title": "入去王儿步前时空队看进低法。社信政几提立等生水山百写我儿毛当权。",
-                        "videoUrl": "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
-                    }
-                    ,
-                    {
-                        "id": "500000200312037422",
-                        "thumb": "http://dummyimage.com/1280x720/2fe62d)",
-                        "title": "队山进大史克好上周数意物同比水办件。规门领我矿相出光己入思金而毛建边。两音角党然包边应起家处布志。",
-                        "videoUrl": "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
-                    }
-                    ,
-                    {
-                        "id": "350000197501187064",
-                        "thumb": "http://dummyimage.com/1280x720/423430)",
-                        "title": "京亲县张所必农七你正度争志容克。增适族广式自查办族传区命过厂列下。",
-                        "videoUrl": "http://clips.vorwaerts-gmbh.de/big_buck_bunny.mp4"
-                    }
-                ]
-            )
+        get(urlType.videoList()).then(result=>{
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows(result.data)
+            })
         })
     }
 
@@ -163,7 +123,7 @@ export default class Video extends Component {
 const styles = StyleSheet.create({
     container: { //容器View
         flex: 1,
-        backgroundColor: 'white'
+        backgroundColor: '#F2F2F2'
     },
     titleBarStyle: { //顶部TitleBar的View
         justifyContent: 'center',
@@ -176,7 +136,8 @@ const styles = StyleSheet.create({
         color: 'white'
     },
     listViewStyle: { //列表ListView
-        backgroundColor: 'white'
+        backgroundColor: 'white',
+        marginTop: p(20)
     },
     videoListViewStyle: { //视频列表外层View
         borderBottomColor: '#F2F2F2',
