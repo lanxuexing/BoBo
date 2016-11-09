@@ -9,7 +9,8 @@ import {
     View,
     ListView,
     Dimensions,
-    Image
+    Image,
+    ActivityIndicator
 } from 'react-native';
 
 import p from '../utils/TransForm';
@@ -17,7 +18,14 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import {get} from '../utils/Request';
 import * as urlType from '../utils/Api';
 
+// 屏幕宽高
 const {width, height} = Dimensions.get('window');
+// 缓存数据
+let cacheData = {
+    dataTotal: 0,
+    videoListData: [],
+    nextPage: 1
+};
 
 /**
  * 视频列表界面
@@ -31,23 +39,41 @@ export default class Video extends Component {
         this.state = {
             dataSource: new ListView.DataSource({
                 rowHasChanged: (oldRow, newRow) => oldRow !== newRow
-            })
+            }),
+            isLoadingMore: false
         };
     }
 
 
     /** 组件加载完成的时候调用 **/
     componentDidMount() {
-        this.fetchNetData();
+        this.fetchNetData(1);
     }
 
 
     //从网络加载数据
-    fetchNetData() {
-        get(urlType.videoList()).then(result=>{
+    fetchNetData(page) {
+        this.setState({
+            isLoadingMore: true
+        });
+        get(urlType.videoList(), {page: page}).then(result=> {
+            //把数据存入缓存,先取出原有的数据
+            let listData = cacheData.videoListData.slice();
+            //将原有的数据和新的数据拼接
+            cacheData.videoListData = listData.concat(result.data);
+            //存入数据总长度
+            cacheData.dataTotal = result.total;
+            console.log('总个数据的长度是：' + cacheData.dataTotal);
+            console.log('当前的listView数据的总长度是：' + cacheData.videoListData.length);
             this.setState({
-                dataSource: this.state.dataSource.cloneWithRows(result.data)
+                dataSource: this.state.dataSource.cloneWithRows(cacheData.videoListData),
+                isLoadingMore: false
             })
+        }).catch((result)=> {
+            this.setState({
+                isLoadingMore: false
+            });
+            console.log('网络请求失败' + result)
         })
     }
 
@@ -72,6 +98,9 @@ export default class Video extends Component {
                 dataSource={this.state.dataSource}
                 renderRow={this.renderVideoList}
                 enableEmptySections={true}
+                onEndReachedThreshold={20}
+                onEndReached={()=>this.fetchMoreData()}
+                renderFooter={()=>this.renderFooterView()}
                 style={styles.listViewStyle}
             />
         );
@@ -114,6 +143,49 @@ export default class Video extends Component {
                         <Text style={styles.commentsTextStyle}>评论</Text>
                     </View>
                 </View>
+            </View>
+        );
+    }
+
+
+    /** 上拉加载更多 **/
+    fetchMoreData() {
+        console.log('加载更多...');
+        if (!this.isHasMore || this.state.isLoadingMore) {
+            return null;
+        }
+        //加载更多
+        let page = cacheData.nextPage;
+        this.fetchNetData(page);
+    };
+
+
+    /** 判断是否有更多数据 **/
+    isHasMore() {
+        return cacheData.videoListData.length !== cacheData.dataTotal;
+    }
+
+    /** 加载更多进度 **/
+    renderFooterView() {
+        // 数据加载完毕
+        if(!this.isHasMore && cacheData.dataTotal !== 0){
+            return (
+                <View style={styles.loadingMoreViewStyle}>
+                    <Text style={styles.loadingMoreTextStyle}>没有更多数据啦...</Text>
+                </View>
+            );
+        }
+        // 不是正在加载更多
+        if(!this.state.isLoadingMore){
+            return <View style={styles.loadingMoreViewStyle}/>
+        }
+        // 不是正在加载更多
+        return (
+            <View style={styles.loadingMoreViewStyle}>
+                <ActivityIndicator size="small" color="#ff3333"/>
+                    <Text style={styles.loadingMoreTitleStyle}>
+                    数据加载中……
+                </Text>
             </View>
         );
     }
@@ -205,5 +277,24 @@ const styles = StyleSheet.create({
         fontSize: p(28),
         marginLeft: p(20),
         color: '#333333'
+    },
+    loadingMoreViewStyle: { //加载更多View
+        flex: 1,
+        flexDirection: 'row',
+        justifyContent: 'center',
+        alignItems: 'center',
+        paddingVertical: p(40)
+    },
+    loadingMoreTextStyle: { //加载完更多文字
+        fontSize: p(22)
+    },
+    loadingMoreProgressStyle: { //加载进度
+        marginVertical: p(40)
+    },
+    loadingMoreTitleStyle: { //正在加载更多文字
+        textAlign: 'center',
+        fontSize: p(22),
+        marginLeft: p(20),
+        color: '#979797'
     }
 });
