@@ -10,7 +10,8 @@ import {
     ListView,
     Dimensions,
     Image,
-    ActivityIndicator
+    ActivityIndicator,
+    RefreshControl
 } from 'react-native';
 
 import p from '../utils/TransForm';
@@ -40,7 +41,8 @@ export default class Video extends Component {
             dataSource: new ListView.DataSource({
                 rowHasChanged: (oldRow, newRow) => oldRow !== newRow
             }),
-            isLoadingMore: false
+            isLoadingMore: false,
+            isRefreshing: false
         };
     }
 
@@ -53,26 +55,57 @@ export default class Video extends Component {
 
     //从网络加载数据
     fetchNetData(page) {
-        this.setState({
-            isLoadingMore: true
-        });
+        if (page !== 0) {
+            //上拉加载更多
+            this.setState({
+                isLoadingMore: true
+            });
+        }else {
+            //下拉刷新
+            this.setState({
+                isRefreshing: true
+            });
+        }
         get(urlType.videoList(), {page: page}).then(result=> {
             //把数据存入缓存,先取出原有的数据
             let listData = cacheData.videoListData.slice();
             //将原有的数据和新的数据拼接
-            cacheData.videoListData = listData.concat(result.data);
+            if (page !== 0) {
+                //上拉加载更多
+                cacheData.videoListData = listData.concat(result.data);
+            }else {
+                //下拉刷新
+                cacheData.videoListData = result.data.concat(listData);
+            }
             //存入数据总长度
             cacheData.dataTotal = result.total;
+            //下一页
+            cacheData.nextPage += 1;
             console.log('总个数据的长度是：' + cacheData.dataTotal);
             console.log('当前的listView数据的总长度是：' + cacheData.videoListData.length);
-            this.setState({
-                dataSource: this.state.dataSource.cloneWithRows(cacheData.videoListData),
-                isLoadingMore: false
-            })
+            if (page !== 0) {
+                //上拉加载更多
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(cacheData.videoListData),
+                    isLoadingMore: false
+                })
+            }else {
+                //下拉刷新
+                this.setState({
+                    dataSource: this.state.dataSource.cloneWithRows(cacheData.videoListData),
+                    isRefreshing: false
+                })
+            }
         }).catch((result)=> {
-            this.setState({
-                isLoadingMore: false
-            });
+            if (page !== 0) {
+                this.setState({
+                    isLoadingMore: false
+                });
+            }else {
+                this.setState({
+                    isRefreshing: false
+                });
+            }
             console.log('网络请求失败' + result)
         })
     }
@@ -101,6 +134,17 @@ export default class Video extends Component {
                 onEndReachedThreshold={20}
                 onEndReached={()=>this.fetchMoreData()}
                 renderFooter={()=>this.renderFooterView()}
+                refreshControl={
+                    <RefreshControl
+                        refreshing={this.state.isRefreshing}
+                        onRefresh={()=>this.onRefresh()}
+                        title={"正在更新..."}
+                        titleColor={"#2E2E2E"}
+                        tintColor={"#FF3333"}
+                        colors={['#FF3333', '#E35852']}
+                        progressBackgroundColor={"white"}
+                    />
+                }
                 style={styles.listViewStyle}
             />
         );
@@ -145,6 +189,16 @@ export default class Video extends Component {
                 </View>
             </View>
         );
+    }
+
+
+    /** 下拉刷新 **/
+    onRefresh() {
+        if (!this.isHasMore || this.state.isRefreshing) {
+            return null;
+        }
+        //从服务获取最新的数据
+        this.fetchNetData(0);
     }
 
 
