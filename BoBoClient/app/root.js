@@ -2,55 +2,70 @@
  * Created by Administrator on 2016/11/6.
  */
 
-import React, { Component } from 'react';
+import React, {Component} from 'react';
+import {
+    Navigator,
+    Platform,
+    BackAndroid
+} from 'react-native';
 
-import ScrollableTabView from 'react-native-scrollable-tab-view';
-import BoBoTabBar from './components/BoBoTabBar';
-import Video from './pages/Video';
-import Record from './pages/Record';
-import Picture from './pages/Picture';
-import Me from './pages/Me';
+import Main from './pages/Main';
 
 export default class Root extends Component {
 
-    // 构造
-      constructor(props) {
+    constructor(props) {
         super(props);
-        // 初始状态
-        this.state = {
-            tabNames: ['视频', '录制', '图片', '我的'],
-            tabIconNames: ['ios-videocam', 'ios-recording', 'ios-camera', 'ios-contact']
-        };
-      }
+        this.onBackAndroid = this.onBackAndroid.bind(this);
+    }
+
+    // 组件即将挂载的时候注册Android物理返回键的监听器
+    componentWillMount() {
+        if (Platform.OS === 'android') {
+            BackAndroid.addEventListener('hardwareBackPress', this.onBackAndroid);
+        }
+    }
+
+    // 组件即将卸载的时候移除Android物理返回键的监听器
+    componentWillUnmount() {
+        if (Platform.OS === 'android') {
+            BackAndroid.removeEventListener('hardwareBackPress', this.onBackAndroid);
+        }
+    }
+
+    // Android物理返回键的的处理
+    onBackAndroid() {
+        const navigator = this.refs.navigator;
+        const routers = navigator.getCurrentRoutes();
+        console.log('当前路由长度：' + routers.length);
+        if (routers.length > 1) {
+            navigator.pop();
+            return true;
+        }
+        return false;
+    };
 
     render() {
-        let tabNames = this.state.tabNames;
-        let tabIconNames = this.state.tabIconNames;
+        let defaultName = 'Main';
+        let defaultComponent = Main;
         return (
-            <ScrollableTabView
-                renderTabBar={
-                    () => <BoBoTabBar tabNames={tabNames} tabIconNames={tabIconNames}/>
-                }
-                tabBarPosition={'bottom'}
-                onChangeTab={
-                    (obj) => {
-                        console.log('被选中的tab下标：' + obj.i);
+            <Navigator
+                // 初始化路由
+                initialRoute={{ name: defaultName, component: defaultComponent }}
+                ref='navigator'
+                // 配置路由场景
+                configureScene={
+                    (route) => {
+                        return Navigator.SceneConfigs.PushFromRight;
                     }
                 }
-                onScroll={
-                    (position) => {
-                        console.log('滑动时的位置：' + position);
+                // 渲染路由
+                renderScene={
+                    (route, navigator) => {
+                        let Component = route.component;
+                        return <Component {...route.params} navigator={navigator} />
                     }
                 }
-                locked={false}
-                initialPage={0}
-                prerenderingSiblingsNumber={1}
-            >
-                <Video tabLabel="video" />
-                <Record tabLabel="record" />
-                <Picture tabLabel="Picture" />
-                <Me tabLabel="me" />
-            </ScrollableTabView>
+            />
         );
     }
 }

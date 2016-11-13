@@ -8,3 +8,8 @@ import {getServerHost} from './Host';
 export const videoList = ()=> {
     return getServerHost() + 'bobo/video';
 };
+
+//首页视频点赞
+export const videoLove = ()=> {
+    return getServerHost() + 'bobo/love';
+};

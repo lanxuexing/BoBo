@@ -11,13 +11,15 @@ import {
     Dimensions,
     Image,
     ActivityIndicator,
-    RefreshControl
+    RefreshControl,
+    TouchableHighlight
 } from 'react-native';
 
 import p from '../utils/TransForm';
 import Icon from 'react-native-vector-icons/Ionicons';
-import {get} from '../utils/Request';
+import {get, post} from '../utils/Request';
 import * as urlType from '../utils/Api';
+import VideoDetail from './VideoDetail';
 
 // 屏幕宽高
 const {width, height} = Dimensions.get('window');
@@ -42,7 +44,8 @@ export default class Video extends Component {
                 rowHasChanged: (oldRow, newRow) => oldRow !== newRow
             }),
             isLoadingMore: false,
-            isRefreshing: false
+            isRefreshing: false,
+            isLove: false
         };
     }
 
@@ -73,14 +76,14 @@ export default class Video extends Component {
             if (page !== 0) {
                 //上拉加载更多
                 cacheData.videoListData = listData.concat(result.data);
+                //下一页
+                cacheData.nextPage += 1;
             }else {
                 //下拉刷新
                 cacheData.videoListData = result.data.concat(listData);
             }
             //存入数据总长度
             cacheData.dataTotal = result.total;
-            //下一页
-            cacheData.nextPage += 1;
             console.log('总个数据的长度是：' + cacheData.dataTotal);
             console.log('当前的listView数据的总长度是：' + cacheData.videoListData.length);
             if (page !== 0) {
@@ -129,7 +132,7 @@ export default class Video extends Component {
         return (
             <ListView
                 dataSource={this.state.dataSource}
-                renderRow={this.renderVideoList}
+                renderRow={this.renderVideoList.bind(this)}
                 enableEmptySections={true}
                 onEndReachedThreshold={20}
                 onEndReached={()=>this.fetchMoreData()}
@@ -154,42 +157,84 @@ export default class Video extends Component {
     /** 视频列表 **/
     renderVideoList(rowData) {
         return (
-            <View style={styles.videoListViewStyle}>
-                {/** 视频标题 **/}
-                <View style={styles.titleViewStyle}>
-                    <Text style={styles.titleTextStyle}>{rowData.title}</Text>
-                </View>
-                {/** 视频缩略图 **/}
-                <Image source={{uri: rowData.thumb}} style={styles.imageStyle}>
-                    {/** 播放按钮 **/}
-                    <Icon
-                        name={'ios-play'}
-                        size={p(56)}
-                        style={styles.videoPlayStyle}
-                    />
-                </Image>
-                {/** 点赞和评论 **/}
-                <View style={styles.bottomViewStyle}>
-                    <View style={styles.loveViewStyle}>
-                        <Icon
-                            name={'ios-heart-outline'}
-                            size={p(56)}
-                            style={styles.loveIconStyle}
-                        />
-                        <Text style={styles.loveTextStyle}>点赞</Text>
+            <TouchableHighlight
+                underlayColor={'#838B8B'}
+                activeOpacity={0.5}
+                onPress={()=>this.onPressVideoList(rowData)}
+            >
+                <View style={styles.videoListViewStyle}>
+                    {/** 视频标题 **/}
+                    <View style={styles.titleViewStyle}>
+                        <Text style={styles.titleTextStyle}>{rowData.title}</Text>
                     </View>
-                    <View style={styles.commentsViewStyle}>
+                    {/** 视频缩略图 **/}
+                    <Image source={{uri: rowData.thumb}} style={styles.imageStyle}>
+                        {/** 播放按钮 **/}
                         <Icon
-                            name={'ios-chatbubbles'}
+                            name={'ios-play'}
                             size={p(56)}
-                            style={styles.commentsIconStyle}
+                            style={styles.videoPlayStyle}
                         />
-                        <Text style={styles.commentsTextStyle}>评论</Text>
+                    </Image>
+                    {/** 点赞和评论 **/}
+                    <View style={styles.bottomViewStyle}>
+                        <View style={styles.loveViewStyle}>
+                            <Icon
+                                name={this.state.isLove ? 'ios-heart' : 'ios-heart-outline'}
+                                size={p(56)}
+                                onPress={()=>this.loveVideo(rowData)}
+                                style={this.state.isLove ? styles.loveDownIconStyle : styles.loveIconStyle}
+                            />
+                            <Text style={styles.loveTextStyle}>点赞</Text>
+                        </View>
+                        <View style={styles.commentsViewStyle}>
+                            <Icon
+                                name={'ios-chatbubbles'}
+                                size={p(56)}
+                                style={styles.commentsIconStyle}
+                            />
+                            <Text style={styles.commentsTextStyle}>评论</Text>
+                        </View>
                     </View>
                 </View>
-            </View>
+            </TouchableHighlight>
         );
     }
+
+
+    /** 播放视频 **/
+    onPressVideoList(rowData) {
+        let {navigator} = this.props;
+        if (navigator) {
+            navigator.push({
+                name: 'VideoDetail',
+                component: VideoDetail,
+                params: {
+                    videoData: rowData
+                }
+            })
+        }
+    }
+
+
+    /** 点赞功能 **/
+    loveVideo(rowData) {
+        post(urlType.videoLove(), {id: rowData.id, isLove: !this.state.isLove}).then(
+            response =>{
+                console.log('点赞返回数据');
+                console.log(response);
+                if (response && response.code == 0) {
+                    console.log('用户已经点赞...');
+                    console.log(!this.state.isLove);
+                    this.setState({
+                        isLove: !this.state.isLove
+                    })
+                }else {
+                    console.log('网络请求失败');
+            }
+        });
+    }
+
 
 
     /** 下拉刷新 **/
@@ -304,11 +349,18 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: width / 2,
         height: p(80),
-        backgroundColor: 'purple'
+        backgroundColor: 'white',
+        borderRightColor: '#F2F2F2',
+        borderRightWidth: p(4)
     },
-    loveIconStyle: { //点赞图标
+    loveIconStyle: { //未点赞图标
         height: p(50),
         width: p(50)
+    },
+    loveDownIconStyle: { //已点赞图标
+        height: p(50),
+        width: p(50),
+        color: 'red'
     },
     loveTextStyle: { //点赞文字
         fontSize: p(28),
@@ -321,7 +373,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         width: width / 2,
         height: p(80),
-        backgroundColor: 'green'
+        backgroundColor: 'white'
     },
     commentsIconStyle: { //评论图标
         height: p(50),
