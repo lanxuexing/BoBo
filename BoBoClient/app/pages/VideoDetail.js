@@ -35,7 +35,8 @@ export default class VideoDetail extends Component {
             currentTime: 0.0,
             isLoading: false,
             isLoaded: false,
-            isError: false
+            isError: false,
+            isFullScreen: false
         };
         // 绑定视频播放相关的回调函数
         this.onLoadStart = this.onLoadStart.bind(this);
@@ -47,6 +48,7 @@ export default class VideoDetail extends Component {
         this.repeatPlay = this.repeatPlay.bind(this);
         this.pausePlay = this.pausePlay.bind(this);
         this.resumePlay = this.resumePlay.bind(this);
+        this.onFullScreen = this.onFullScreen.bind(this);
     }
 
     render() {
@@ -132,8 +134,26 @@ export default class VideoDetail extends Component {
                     onPress={this.onReturn}
                     style={styles.returnIconStyle}
                 />
+                {
+                    !this.state.isFullScreen ?
+                    <Icon
+                        name='ios-expand'
+                        size={36}
+                        onPress={this.onFullScreen}
+                        style={styles.fullScreenIconStyle}
+                    />: null
+                }
             </View>
         );
+    }
+
+
+    // 全屏，Android客户端有点问题
+    onFullScreen() {
+        this.refs.videoPlayer.presentFullscreenPlayer();
+        this.setState({
+            isFullScreen: true
+        });
     }
 
 
@@ -305,5 +325,11 @@ const styles = StyleSheet.create({
     loadingErrorStyle: { //视频加载出错文字
         fontSize: p(26),
         color: '#FF3333'
+    },
+    fullScreenIconStyle: { //全屏按钮
+        top: p(520),
+        right: p(20),
+        color: 'white',
+        position: 'absolute'
     }
 });
