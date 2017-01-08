@@ -9,14 +9,24 @@ import {
     Text,
     Dimensions,
     ActivityIndicator,
-    TouchableOpacity
+    TouchableOpacity,
+    ScrollView,
+    Image,
+    ListView
 } from 'react-native';
 
 import Video from 'react-native-video';
 import p from '../utils/TransForm';
 import Icon from 'react-native-vector-icons/Ionicons';
+import {get, post} from '../utils/Request';
+import * as urlType from '../utils/Api';
 
 const {width, height} = Dimensions.get('window');
+// 缓存数据
+let cacheData = {
+    dataTotal: 0,
+    videoCommentsListData: []
+};
 
 export default class VideoDetail extends Component {
 
@@ -36,7 +46,10 @@ export default class VideoDetail extends Component {
             isLoading: false,
             isLoaded: false,
             isError: false,
-            isFullScreen: false
+            isFullScreen: false,
+            dataSource: new ListView.DataSource({
+                rowHasChanged: (oldRow, newRow) => oldRow !== newRow
+            })
         };
         // 绑定视频播放相关的回调函数
         this.onLoadStart = this.onLoadStart.bind(this);
@@ -49,6 +62,30 @@ export default class VideoDetail extends Component {
         this.pausePlay = this.pausePlay.bind(this);
         this.resumePlay = this.resumePlay.bind(this);
         this.onFullScreen = this.onFullScreen.bind(this);
+
+        this.renderCommentsList = this.renderCommentsList.bind(this);
+    }
+
+    /** 组件加载完成的时候调用 **/
+    componentDidMount() {
+        this.fetchNetData();
+    }
+
+    //从网络加载数据
+    fetchNetData() {
+        get(urlType.videoComments(), {videoId: '12323'}).then(result=> {
+            //把数据存入缓存,先取出原有的数据
+            cacheData.videoCommentsListData = result.data;
+            //存入数据总长度
+            cacheData.dataTotal = result.total;
+            console.log('总个数据的长度是：' + cacheData.dataTotal);
+            console.log('当前的listView数据的总长度是：' + cacheData.videoCommentsListData.length);
+            this.setState({
+                dataSource: this.state.dataSource.cloneWithRows(cacheData.videoCommentsListData)
+            })
+        }).catch((result)=> {
+            console.log('网络请求失败' + result);
+        })
     }
 
     render() {
@@ -143,6 +180,35 @@ export default class VideoDetail extends Component {
                         style={styles.fullScreenIconStyle}
                     />: null
                 }
+
+                {/** 视频详情评论列表 **/}
+                <ScrollView
+                    style={styles.scrollViewStyle}
+                    enableEmptySections={true}
+                    showsVerticalScrollIndicator={false}
+                    automaticallyAdjustContentInsets={false}
+                >
+                    {/** 用户评论信息 **/}
+                    <View style={styles.userContainerStyle}>
+                        <Image
+                            style={styles.userAvatarStyle}
+                            source={{uri: videoData.userInfo.avatar}}
+                        />
+                        <View style={[styles.userInfoStyle, {width: width - p(160)}]}>
+                            <Text style={styles.userNikNameStyle}>{videoData.userInfo.nickName}</Text>
+                            <Text style={styles.videoTitleStyle} numberOfLines={2}>{videoData.title}</Text>
+                        </View>
+                    </View>
+                    {/** 其他用户信息列表 **/}
+                    <ListView
+                        style={styles.listViewStyle}
+                        dataSource={this.state.dataSource}
+                        renderRow={this.renderCommentsList}
+                        enableEmptySections={true}
+                        showsVerticalScrollIndicator={false}
+                        automaticallyAdjustContentInsets={false}
+                    />
+                </ScrollView>
             </View>
         );
     }
@@ -246,6 +312,23 @@ export default class VideoDetail extends Component {
         })
     }
 
+    // 其他用户信息列表
+    renderCommentsList(rowData) {
+        console.log('服务器返回数据：'+rowData);
+        return (
+            <View style={styles.userContainerStyle}>
+                <Image
+                    style={styles.userAvatarStyle}
+                    source={{uri: rowData.commentsInfo.avatar}}
+                />
+                <View style={[styles.userInfoStyle, {width: width - p(160)}]}>
+                    <Text style={styles.userNikNameStyle}>{rowData.commentsInfo.nickName}</Text>
+                    <Text style={styles.videoTitleStyle} numberOfLines={2}>{rowData.commentsInfo.content}</Text>
+                </View>
+            </View>
+        );
+    }
+
 }
 
 const styles = StyleSheet.create({
@@ -331,5 +414,31 @@ const styles = StyleSheet.create({
         right: p(20),
         color: 'white',
         position: 'absolute'
+    },
+    scrollViewStyle: { //视频详情评论列表
+
+    },
+    userContainerStyle: { //详情列表条目
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginVertical: p(20),
+        marginHorizontal: p(20)
+    },
+    userAvatarStyle: { //用户头像
+        width: p(100),
+        height: p(100),
+        borderRadius: p(50),
+    },
+    userInfoStyle: { //用户信息
+        marginLeft: p(20)
+    },
+    userNikNameStyle: { //用户的昵称
+        fontSize: p(26),
+        color: '#2E2E2E'
+    },
+    videoTitleStyle: { //视频的标题
+        fontSize: p(24),
+        color: '#333333',
+        marginTop: p(10)
     }
 });

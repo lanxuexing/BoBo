@@ -13,3 +13,8 @@ export const videoList = ()=> {
 export const videoLove = ()=> {
     return getServerHost() + 'bobo/love';
 };
+
+//首页视频详情评论列表
+export const videoComments = ()=> {
+    return getServerHost() + 'bobo/comments';
+};
