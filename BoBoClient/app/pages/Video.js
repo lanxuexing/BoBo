@@ -239,7 +239,7 @@ export default class Video extends Component {
 
     /** 下拉刷新 **/
     onRefresh() {
-        if (!this.isHasMore || this.state.isRefreshing) {
+        if (!this.isHasMore() || this.state.isRefreshing) {
             return null;
         }
         //从服务获取最新的数据
@@ -249,25 +249,31 @@ export default class Video extends Component {
 
     /** 上拉加载更多 **/
     fetchMoreData() {
-        console.log('加载更多...');
-        if (!this.isHasMore || this.state.isLoadingMore) {
-            return null;
+        if (!this.isHasMore() || this.state.isLoadingMore) {
+            console.log('没有数据了...');
+            return ;
+        }else {
+            //加载更多
+            console.log('加载更多...');
+            let page = cacheData.nextPage;
+            this.fetchNetData(page);
         }
-        //加载更多
-        let page = cacheData.nextPage;
-        this.fetchNetData(page);
     };
 
 
     /** 判断是否有更多数据 **/
     isHasMore() {
-        return cacheData.videoListData.length !== cacheData.dataTotal;
+        if (cacheData.videoListData.length >= cacheData.dataTotal) {
+            return false;
+        }else {
+            return true;
+        }
     }
 
     /** 加载更多进度 **/
     renderFooterView() {
         // 数据加载完毕
-        if(!this.isHasMore && cacheData.dataTotal !== 0){
+        if(!this.isHasMore() && cacheData.dataTotal !== 0){
             return (
                 <View style={styles.loadingMoreViewStyle}>
                     <Text style={styles.loadingMoreTextStyle}>没有更多数据啦...</Text>
