@@ -316,7 +316,18 @@ export default class VideoDetail extends Component {
                 post(urlType.videoComment(), {videoId: '1234', content: commentsContent}).then((result)=> {
                         if(result && result.code == '0'){
                             let videoCommentData = cacheData.videoCommentsListData.slice();
-                            cacheData.videoCommentsListData = result.data.concat(videoCommentData);
+                            // cacheData.videoCommentsListData = result.data.concat(videoCommentData);
+                            //测试使用
+                            let newData = result.data[0].commentsInfo;
+                            cacheData.videoCommentsListData = [{
+                                 commentsInfo:{
+                                     avatar: newData.avatar,
+                                     content: commentsContent,
+                                     id: newData.id,
+                                     nickName: 'BoBoClient'
+                                 }
+                            }].concat(videoCommentData);
+
                             this.setState({
                                 dataSource: this.state.dataSource.cloneWithRows(cacheData.videoCommentsListData),
                                 isSubmit: false
