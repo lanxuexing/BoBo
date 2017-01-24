@@ -9,28 +9,34 @@ import {
     View
 } from 'react-native';
 
+import p from '../utils/TransForm';
+
 export default class Record extends Component {
     render() {
         return (
             <View style={styles.container}>
-                <Text style={styles.welcome}>
-                    Welcome to 录制界面
-                </Text>
+                {/** 顶部的TitleBar **/}
+                <View style={styles.titleBarStyle}>
+                    <Text style={styles.titleBarTextStyle}>录制</Text>
+                </View>
             </View>
         );
     }
 }
 
 const styles = StyleSheet.create({
-    container: {
+    container: { //容器View
         flex: 1,
+        backgroundColor: '#F2F2F2'
+    },
+    titleBarStyle: { //顶部TitleBar的View
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: '#F5FCFF',
+        height: p(100),
+        backgroundColor: '#E35852'
     },
-    welcome: {
-        fontSize: 20,
-        textAlign: 'center',
-        margin: 10,
+    titleBarTextStyle: { //顶部TitleBar的文字
+        fontSize: p(32),
+        color: 'white'
     }
 });

@@ -330,7 +330,8 @@ export default class VideoDetail extends Component {
 
                             this.setState({
                                 dataSource: this.state.dataSource.cloneWithRows(cacheData.videoCommentsListData),
-                                isSubmit: false
+                                isSubmit: false,
+                                numOfText: 200
                             });
                             this.setModalVisible(false);
                         }
