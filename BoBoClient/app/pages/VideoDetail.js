@@ -11,7 +11,13 @@ import {
     ActivityIndicator,
     TouchableOpacity,
     Image,
-    ListView
+    ListView,
+    TextInput,
+    Modal,
+    Alert,
+    Keyboard,
+    TouchableWithoutFeedback,
+    ToastAndroid
 } from 'react-native';
 
 import Video from 'react-native-video';
@@ -50,7 +56,14 @@ export default class VideoDetail extends Component {
             dataSource: new ListView.DataSource({
                 rowHasChanged: (oldRow, newRow) => oldRow !== newRow
             }),
-            isLoadingMore: false
+            isLoadingMore: false,
+            animationType: 'slide',
+            isTransparent: false,
+            isVisible: false,
+            // 剩余文本数量
+            numOfText: 200,
+            commentsTextContent: '',
+            isSubmit: false
         };
         // 绑定视频播放相关的回调函数
         this.onLoadStart = this.onLoadStart.bind(this);
@@ -64,9 +77,14 @@ export default class VideoDetail extends Component {
         this.resumePlay = this.resumePlay.bind(this);
         this.onFullScreen = this.onFullScreen.bind(this);
 
+        //评论列表ListView
         this.renderCommentsList = this.renderCommentsList.bind(this);
         this.fetchMoreData = this.fetchMoreData.bind(this);
         this.renderFooterView = this.renderFooterView.bind(this);
+
+        //评论输入框TextInput
+        this.commentsBoxFocus = this.commentsBoxFocus.bind(this);
+        this.commentsBoxBlur = this.commentsBoxBlur.bind(this);
     }
 
     /** 组件加载完成的时候调用 **/
@@ -219,9 +237,124 @@ export default class VideoDetail extends Component {
                     onEndReached={this.fetchMoreData}
                     renderFooter={this.renderFooterView}
                 />
-
+                {/** 写评论内容的模态 **/}
+                <Modal
+                    animationType={this.state.animationType}
+                    transparent={this.state.isTransparent}
+                    visible={this.state.isVisible}
+                    onRequestClose={() => {
+                        this.setModalVisible(false)
+                    }}
+                >
+                    <View>
+                        {/** 评论页顶部TitleBar **/}
+                        <View style={styles.titleBarStyle}>
+                            <Text style={styles.titleBarLeftTextStyle} onPress={this.onModalCancel.bind(this, false)}>取消</Text>
+                            <Text style={styles.titleBarMiddleTextStyle}>发评论</Text>
+                            <View style={styles.titleBarRightViewStyle}>
+                                <Text style={styles.titleBarRightTextStyle} onPress={this.onModalEnSure.bind(this)}>发送</Text>
+                            </View>
+                        </View>
+                        {/** 评论页的内容局域 **/}
+                        <TouchableWithoutFeedback onPress={()=>{ Keyboard.dismiss() }}>
+                            {/** 视频评论输入框 **/}
+                            <View style={styles.modalCommentsBoxStyle}>
+                                <View style={styles.modalTextInputBoxStyle}>
+                                    <TextInput
+                                        placeholder={'写评论...'}
+                                        placeholderTextColor={'#aaaaaa'}
+                                        style={styles.modalTextInputStyle}
+                                        underlineColorAndroid={'transparent'}
+                                        numberOfLines={20}
+                                        maxLength={200}
+                                        multiline={true}
+                                        onFocus={this.commentsBoxFocus}
+                                        onBlur={this.commentsBoxBlur}
+                                        onChangeText={(text) => {
+                                            let remain = 200 - text.length;
+                                            console.log('剩余文本长度：'+remain);
+                                            this.setState({
+                                                commentsTextContent: text,
+                                                numOfText: remain
+                                            })
+                                        }}
+                                    />
+                                </View>
+                                {/** 剩余文本数量 **/}
+                                <Text style={styles.remainTextStyle}>{this.state.numOfText}&nbsp;字</Text>
+                            </View>
+                        </TouchableWithoutFeedback>
+                    </View>
+                </Modal>
             </View>
         );
+    }
+
+
+    //评论输入框获取焦点
+    commentsBoxFocus() {
+        // ToastAndroid.show('输入框获取到焦点~', ToastAndroid.SHORT);
+    }
+
+    //评论输入框失去焦点
+    commentsBoxBlur() {
+        // ToastAndroid.show('输入框失去焦点~', ToastAndroid.SHORT);
+    }
+
+
+    //模态发送按钮点击事件
+    onModalEnSure() {
+        let commentsContent = this.state.commentsTextContent;
+        if (!commentsContent) {
+            return Alert.alert('评论内容不能为空');
+        }else if(this.state.isSubmit) {
+            return Alert.alert('正在提交评论');
+        }else {
+            this.setState({
+                isSubmit: true
+            }, ()=> {
+                post(urlType.videoComment(), {videoId: '1234', content: commentsContent}).then((result)=> {
+                        if(result && result.code == '0'){
+                            let videoCommentData = cacheData.videoCommentsListData.slice();
+                            cacheData.videoCommentsListData = result.data.concat(videoCommentData);
+                            this.setState({
+                                dataSource: this.state.dataSource.cloneWithRows(cacheData.videoCommentsListData),
+                                isSubmit: false
+                            });
+                            this.setModalVisible(false);
+                        }
+                    }
+                ).catch((result)=> {
+                    console.log('评论失败'+result);
+                    this.setState({
+                        isSubmit: false
+                    });
+                    this.setModalVisible(false);
+                });
+            })
+        }
+    }
+
+
+    //模态取消按钮点击事件
+    onModalCancel(isVisible) {
+        this.setState({
+            isVisible: isVisible
+        });
+        if(isVisible) {
+            this.pausePlay();
+        }
+    }
+
+
+    //设置评论模态的关闭与隐藏
+    setModalVisible(isVisible) {
+        this.setState({
+            isVisible: isVisible
+        });
+        if(isVisible) {
+            this.pausePlay();
+        }
     }
 
 
@@ -392,16 +525,34 @@ export default class VideoDetail extends Component {
     // 用户评论信息
     renderHeaderView(videoData) {
         return (
-        <View style={styles.userContainerStyle}>
-            <Image
-                style={styles.userAvatarStyle}
-                source={{uri: videoData.userInfo.avatar}}
-            />
-            <View style={[styles.userInfoStyle, {width: width - p(160)}]}>
-                <Text style={styles.userNikNameStyle}>{videoData.userInfo.nickName}</Text>
-                <Text style={styles.videoTitleStyle} numberOfLines={2}>{videoData.title}</Text>
+            <View style={styles.headerViewStyle}>
+                <View style={styles.userContainerStyle}>
+                    {/** 视频发布信息 **/}
+                    <Image
+                        style={styles.userAvatarStyle}
+                        source={{uri: videoData.userInfo.avatar}}
+                    />
+                    <View style={[styles.userInfoStyle, {width: width - p(170)}]}>
+                        <Text style={styles.userNikNameStyle}><Text style={{color: '#0c73c2'}}>发布者：</Text>{videoData.userInfo.nickName}</Text>
+                        <Text style={styles.videoTitleStyle} numberOfLines={2}><Text style={{color: '#333'}}>标题：</Text>{videoData.title}</Text>
+                    </View>
+                </View>
+                {/** 视频评论输入框 **/}
+                <View style={styles.commentsBoxStyle}>
+                    <View style={styles.textInputBoxStyle}>
+                        <TextInput
+                            placeholder={'评论一下吧'}
+                            style={styles.textInputStyle}
+                            underlineColorAndroid={'transparent'}
+                            editable={false}
+                            onTouchStart={()=>{this.setModalVisible(true)}}
+                        />
+                    </View>
+                </View>
+                <View style={styles.commentsAreaStyle}>
+                    <Text style={styles.commentsTitleStyle}>精彩评论</Text>
+                </View>
             </View>
-        </View>
         );
     }
 
@@ -498,20 +649,20 @@ const styles = StyleSheet.create({
         marginHorizontal: p(20)
     },
     userAvatarStyle: { //用户头像
-        width: p(100),
-        height: p(100),
-        borderRadius: p(50),
+        width: p(120),
+        height: p(120),
+        borderRadius: p(60),
     },
     userInfoStyle: { //用户信息
         marginLeft: p(20)
     },
     userNikNameStyle: { //用户的昵称
-        fontSize: p(26),
+        fontSize: p(32),
         color: '#2E2E2E'
     },
     videoTitleStyle: { //视频的标题
-        fontSize: p(24),
-        color: '#333333',
+        fontSize: p(28),
+        color: '#9b9b9b',
         marginTop: p(10)
     },
     otherContainerStyle: { //其他详情列表条目
@@ -552,5 +703,81 @@ const styles = StyleSheet.create({
         fontSize: p(22),
         marginLeft: p(20),
         color: '#979797'
+    },
+    headerViewStyle: {
+        width: width
+    },
+    commentsBoxStyle: { //评论区域
+        paddingHorizontal: p(20)
+    },
+    textInputBoxStyle: { //输入框盒子
+        width: width - p(40),
+        height: p(80),
+        justifyContent: 'center',
+        borderColor: '#DDD',
+        borderRadius: p(10),
+        borderWidth: p(2)
+    },
+    textInputStyle: { //输入框
+        fontSize: p(26),
+        color: '#9d9d9d'
+    },
+    commentsAreaStyle: { //评论列表标题区域
+        width: width,
+        marginTop: p(10),
+        padding: p(20),
+        borderBottomColor: '#e8e8e9',
+        borderBottomWidth: p(2)
+    },
+    commentsTitleStyle: { //评论列表标题
+        fontSize: p(30),
+        color: '#333'
+    },
+    titleBarStyle: { //评论模态顶部TitleBar的View
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        height: p(100),
+        backgroundColor: '#E35852',
+        paddingHorizontal: p(20)
+    },
+    titleBarLeftTextStyle: { //评论模态顶部TitleBar左边的文字
+        fontSize: p(30),
+        color: 'white'
+    },
+    titleBarMiddleTextStyle: { //评论模态顶部TitleBar中间的文字
+        fontSize: p(32),
+        color: 'white'
+    },
+    titleBarRightViewStyle: { //评论模态顶部TitleBar右边容器
+        padding: p(10),
+        borderRadius: p(8),
+        backgroundColor: '#FF6F6F'
+    },
+    titleBarRightTextStyle: { //评论模态顶部TitleBar右边的文字
+        fontSize: p(30),
+        color: 'white'
+    },
+    modalCommentsBoxStyle: { //评论模态评论区域
+        paddingHorizontal: p(20),
+        paddingVertical: p(15)
+    },
+    modalTextInputBoxStyle: { //评论模态评论输入框容器
+        width: width - p(40),
+        height: height - p(800),
+        borderColor: '#DDD',
+        borderRadius: p(10),
+        borderWidth: p(2)
+    },
+    modalTextInputStyle: { //评论模态评论输入框
+        fontSize: p(26),
+        color: '#9d9d9d',
+        textAlignVertical: 'top'
+    },
+    remainTextStyle: { //剩余文本数量文字
+        fontSize: p(34),
+        color: '#979797',
+        marginTop: p(10),
+        alignSelf: 'flex-end'
     }
 });

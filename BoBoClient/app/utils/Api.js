@@ -18,3 +18,8 @@ export const videoLove = ()=> {
 export const videoComments = ()=> {
     return getServerHost() + 'bobo/comments';
 };
+
+//视频详情也用户评论视频
+export const videoComment = ()=> {
+    return getServerHost() + 'bobo/comment';
+};
