@@ -23,3 +23,13 @@ export const videoComments = ()=> {
 export const videoComment = ()=> {
     return getServerHost() + 'bobo/comment';
 };
+
+//获取手机验证码
+export const authCode = ()=> {
+    return getServerHost() + 'bobo/authcode';
+};
+
+//用户登录
+export const login = ()=> {
+    return getServerHost() + 'bobo/login';
+};

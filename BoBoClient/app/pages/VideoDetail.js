@@ -558,6 +558,7 @@ export default class VideoDetail extends Component {
                             underlineColorAndroid={'transparent'}
                             editable={false}
                             onTouchStart={()=>{this.setModalVisible(true)}}
+                            includeFontPadding={false}
                         />
                     </View>
                 </View>

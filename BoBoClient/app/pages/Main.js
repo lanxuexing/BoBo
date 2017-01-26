@@ -49,7 +49,7 @@ export default class Main extends Component {
                 <Video tabLabel="video" navigator={this.props.navigator} {...this.props} />
                 <Record tabLabel="record" />
                 <Picture tabLabel="Picture" />
-                <Me tabLabel="me" />
+                <Me tabLabel="me" navigator={this.props.navigator} {...this.props}/>
             </ScrollableTabView>
         );
     }
