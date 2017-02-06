@@ -40,8 +40,16 @@ export default class Me extends Component {
         this.state = {
             isFirstLogin: false,
             phoneNumber: '',
-            authCode: ''
+            authCode: '',
+            remainingTime: 60,
+            isGetAutoCode: false,
+            isAgainGetAutoCode: false
         };
+    }
+
+    //组件被卸载的时候卸载掉定时器
+    componentWillUnmount(){
+        this.interval && clearInterval(this.interval);
     }
 
     render() {
@@ -77,7 +85,7 @@ export default class Me extends Component {
                                 placeholder={'请输入手机号码'}
                                 placeholderTextColor={'#b9b9b9'}
                                 underlineColorAndroid={'transparent'}
-                                keyboardType={'phone-pad'}
+                                keyboardType={'numeric'}
                                 onChangeText={(text) => this.setState({phoneNumber: text})}
                             />
                         </View>
@@ -93,15 +101,25 @@ export default class Me extends Component {
                                 placeholderTextColor={'#b9b9b9'}
                                 underlineColorAndroid={'transparent'}
                                 secureTextEntry={true}
-                                keyboardType={'phone-pad'}
+                                keyboardType={'numeric'}
                                 onChangeText={(text) => this.setState({authCode: text})}
                             />
                         </View>
-                        <TouchableOpacity onPress={this.getAuthCode.bind(this)}>
-                            <View style={styles.codeTextBoxStyle}>
-                                <Text style={styles.codeTextStyle}>获取手机验证码</Text>
-                            </View>
-                        </TouchableOpacity>
+                        {!this.state.isGetAutoCode ?
+                            <TouchableOpacity onPress={this.getAuthCode.bind(this)}>
+                                <View style={styles.codeTextBoxStyle}>
+                                    <Text style={styles.codeTextStyle}>获取手机验证码</Text>
+                                </View>
+                            </TouchableOpacity> : this.state.remainingTime == 0 ?
+                                <TouchableOpacity onPress={this.getAuthCode.bind(this)}>
+                                    <View style={styles.codeTextBoxStyle}>
+                                        <Text style={styles.codeTextStyle}>重新获取手机验证码</Text>
+                                    </View>
+                                </TouchableOpacity> :
+                                <View style={styles.codeTextBoxStyle}>
+                                    <Text style={styles.codeTextStyle}>剩余{this.state.remainingTime}秒</Text>
+                                </View>
+                        }
                         <TouchableOpacity
                             activeOpacity={0.5}
                             onPress={this.onLoginClient.bind(this)}
@@ -129,6 +147,19 @@ export default class Me extends Component {
                 ToastAndroid.show('服务器返回手机验证码: '+JSON.stringify(result.data.authCode), ToastAndroid.LONG);
                 if(result && result.code == '0'){
                     cacheData.authCodeServer = String(result.data.authCode);
+                    this.setState({
+                        isGetAutoCode: true,
+                        remainingTime: 60
+                    });
+                    //手机验证码定时器
+                    this.interval = setInterval(()=>{
+                        if(this.state.remainingTime == 0){
+                            return clearInterval(this.interval);
+                        }
+                        this.setState({
+                            remainingTime: this.state.remainingTime - 1
+                        })
+                    }, 1000);
                 }
             }).catch((error)=> {
                 console.log('获取验证码失败' + error);
@@ -155,7 +186,8 @@ export default class Me extends Component {
                     cacheData.loginToken = result.data.token;
                     ToastAndroid.show('登录成功！服务器返回token: '+cacheData.loginToken, ToastAndroid.SHORT);
                     this.setState({
-                        isFirstLogin: true
+                        isFirstLogin: true,
+                        isGetAutoCode: false
                     });
                 }else{
                     console.log('获取验证码失败');
